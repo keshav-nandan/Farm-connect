@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PlusCircle, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Sprout, Info, FileText, Image as ImageIcon } from 'lucide-react';
-import { createProduct } from '../services/api';
+import { createProduct, getSafeErrorMessage } from '../services/api';
 import { Product, PageView, ProductFile } from '../types';
 import { FileUpload } from './FileUpload';
 
@@ -106,7 +106,8 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
       }
     } catch (err: unknown) {
       console.error('Submission error:', err);
-      setSubmitError(err instanceof Error ? err.message : 'Failed to save product to shared database');
+      const message = getSafeErrorMessage(err, 'Failed to save product. Please try again.');
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }

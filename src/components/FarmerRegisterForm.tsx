@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserCheck, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, Sprout, PlusCircle } from 'lucide-react';
-import { registerFarmer } from '../services/api';
+import { registerFarmer, getSafeErrorMessage } from '../services/api';
 import { Farmer, PageView, ProductFile } from '../types';
 import { FileUpload } from './FileUpload';
 
@@ -71,7 +71,8 @@ export const FarmerRegisterForm: React.FC<FarmerRegisterFormProps> = ({
       }
     } catch (err: unknown) {
       console.error('Farmer registration error:', err);
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to register farmer in database');
+      const message = getSafeErrorMessage(err, 'Failed to register farmer. Please try again.');
+      setErrorMsg(message);
     } finally {
       setIsSubmitting(false);
     }
