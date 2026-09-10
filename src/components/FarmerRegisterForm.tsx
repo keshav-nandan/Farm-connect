@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { UserCheck, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck, Sprout, PlusCircle } from 'lucide-react';
 import { registerFarmer } from '../services/api';
-import { Farmer, PageView } from '../types';
+import { Farmer, PageView, ProductFile } from '../types';
+import { FileUpload } from './FileUpload';
 
 interface FarmerRegisterFormProps {
   onFarmerRegistered: (farmer: Farmer) => void;
@@ -16,6 +17,7 @@ export const FarmerRegisterForm: React.FC<FarmerRegisterFormProps> = ({
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
   const [details, setDetails] = useState('');
+  const [documents, setDocuments] = useState<ProductFile[]>([]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +60,7 @@ export const FarmerRegisterForm: React.FC<FarmerRegisterFormProps> = ({
         phone: phone.trim(),
         location: location.trim(),
         details: details.trim() || 'Cultivator registered on Farm Connect digital network.',
+        documents: documents.length > 0 ? documents : undefined,
       });
 
       if (response.success && response.farmer) {
@@ -116,6 +119,15 @@ export const FarmerRegisterForm: React.FC<FarmerRegisterFormProps> = ({
                 <span className="text-slate-500">Location:</span>
                 <span className="font-semibold text-slate-900">{registeredFarmer.location}</span>
               </div>
+              {registeredFarmer.documents && registeredFarmer.documents.length > 0 && (
+                <div className="flex justify-between items-center pt-1 border-t border-emerald-200/60">
+                  <span className="text-slate-500">Certificates / Files:</span>
+                  <span className="font-semibold text-emerald-800 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{registeredFarmer.documents.length} {registeredFarmer.documents.length === 1 ? 'file' : 'files'} attached</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -236,6 +248,17 @@ export const FarmerRegisterForm: React.FC<FarmerRegisterFormProps> = ({
                   onChange={(e) => setDetails(e.target.value)}
                   placeholder="e.g. Land size (e.g. 4 acres), main seasonal crops (Paddy, Maize, Vegetables), farming type (Organic, Drip irrigation)."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm leading-relaxed"
+                />
+              </div>
+
+              {/* Farmer Documents & Verification Files */}
+              <div className="pt-2 pb-1 border-t border-slate-100">
+                <FileUpload
+                  files={documents}
+                  onChange={setDocuments}
+                  title="Farmer Identity & Farm Documents (Optional)"
+                  description="Upload documents such as Kisan Credit Card, organic farming certificates, soil test report, or field photos. You can click '+ Add More Files' to attach multiple files."
+                  idPrefix="farmer-reg"
                 />
               </div>
 

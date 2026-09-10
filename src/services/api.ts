@@ -1,4 +1,4 @@
-import { Product, Farmer, MarketplaceStats, FilterState } from '../types';
+import { Product, Farmer, MarketplaceStats, FilterState, ProductFile } from '../types';
 
 export const API_BASE = '/api';
 
@@ -46,6 +46,7 @@ export async function createProduct(data: {
   price: number;
   location: string;
   description: string;
+  files?: ProductFile[];
 }): Promise<{ success: boolean; product: Product; message: string }> {
   const response = await fetch(`${API_BASE}/products`, {
     method: 'POST',
@@ -84,6 +85,7 @@ export async function registerFarmer(data: {
   phone: string;
   location: string;
   details?: string;
+  documents?: ProductFile[];
 }): Promise<{ success: boolean; farmer: Farmer; message: string }> {
   const response = await fetch(`${API_BASE}/farmers`, {
     method: 'POST',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, User, Package, PhoneCall, Tag } from 'lucide-react';
+import { MapPin, User, Package, PhoneCall, Tag, Paperclip, Image as ImageIcon } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -96,9 +96,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onContact }) 
         </div>
 
         {/* Product Description */}
-        <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-relaxed mb-4 min-h-[2.5rem]">
+        <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 leading-relaxed mb-3 min-h-[2.5rem]">
           {product.description || 'Fresh agricultural produce harvested locally and offered directly to buyers.'}
         </p>
+
+        {/* Attached Photos / Documents Indicator */}
+        {product.files && product.files.length > 0 && (
+          <div className="mb-3 flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-50/70 border border-emerald-100 text-xs text-emerald-800">
+            <div className="flex items-center gap-1.5 font-medium">
+              <Paperclip className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{product.files.length} {product.files.length === 1 ? 'file' : 'files'} attached</span>
+            </div>
+            <span className="text-[11px] text-emerald-700/80 font-medium">Photos / Proof</span>
+          </div>
+        )}
 
         {/* Quantity & Price Matrix */}
         <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">

@@ -3,12 +3,23 @@ import path from 'path';
 import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 
+export interface ProductFile {
+  id: string;
+  name: string;
+  type: 'image' | 'pdf' | 'document' | 'other';
+  mimeType: string;
+  size: number;
+  dataUrl: string;
+  uploadedAt: string;
+}
+
 export interface Farmer {
   id: string;
   name: string;
   phone: string;
   location: string;
   details: string;
+  documents?: ProductFile[];
   createdAt: string;
 }
 
@@ -22,6 +33,7 @@ export interface Product {
   price: number;
   location: string;
   description: string;
+  files?: ProductFile[];
   createdAt: string;
 }
 
@@ -249,8 +261,9 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Middleware
-  app.use(express.json());
+  // Middleware with expanded limit for file attachments
+  app.use(express.json({ limit: '25mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
   // CORS headers for broad device and preview compatibility
   app.use((req, res, next) => {
@@ -365,7 +378,7 @@ async function startServer() {
   // Create new product
   app.post('/api/products', (req, res) => {
     try {
-      const { farmerName, phone, productName, category, quantity, price, location, description } = req.body;
+      const { farmerName, phone, productName, category, quantity, price, location, description, files } = req.body;
 
       // Validation
       if (!farmerName || !String(farmerName).trim()) {
@@ -411,6 +424,7 @@ async function startServer() {
         price: numPrice,
         location: String(location).trim(),
         description: description ? String(description).trim() : 'Fresh produce harvested locally by farmer.',
+        files: Array.isArray(files) ? files : [],
         createdAt: new Date().toISOString(),
       };
 
@@ -452,7 +466,7 @@ async function startServer() {
   // Register a farmer
   app.post('/api/farmers', (req, res) => {
     try {
-      const { name, phone, location, details } = req.body;
+      const { name, phone, location, details, documents } = req.body;
 
       if (!name || !String(name).trim()) {
         return res.status(400).json({ error: 'Farmer Name is required' });
@@ -476,6 +490,9 @@ async function startServer() {
         existing.name = String(name).trim();
         existing.location = String(location).trim();
         if (details) existing.details = String(details).trim();
+        if (Array.isArray(documents) && documents.length > 0) {
+          existing.documents = [...(existing.documents || []), ...documents];
+        }
         saveDatabase(db);
         return res.json({
           success: true,
@@ -490,6 +507,7 @@ async function startServer() {
         phone: String(phone).trim(),
         location: String(location).trim(),
         details: details ? String(details).trim() : 'Local farmer registered on Farm Connect.',
+        documents: Array.isArray(documents) ? documents : [],
         createdAt: new Date().toISOString(),
       };
 

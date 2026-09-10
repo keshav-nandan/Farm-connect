@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, Phone, PhoneCall, MapPin, User, Package, Copy, Check, MessageSquare, AlertCircle } from 'lucide-react';
-import { Product } from '../types';
+import { X, Phone, PhoneCall, MapPin, User, Package, Copy, Check, MessageSquare, AlertCircle, Paperclip, FileText, Eye, FileCheck, ExternalLink } from 'lucide-react';
+import { Product, ProductFile } from '../types';
 
 interface ContactModalProps {
   product: Product | null;
@@ -9,6 +9,7 @@ interface ContactModalProps {
 
 export const ContactModal: React.FC<ContactModalProps> = ({ product, onClose }) => {
   const [copied, setCopied] = useState(false);
+  const [activePreviewFile, setActivePreviewFile] = useState<ProductFile | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -111,6 +112,55 @@ export const ContactModal: React.FC<ContactModalProps> = ({ product, onClose }) 
             </div>
           </div>
 
+          {/* Attached Produce Photos & Verification Files */}
+          {product.files && product.files.length > 0 && (
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Paperclip className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Produce Photos & Files ({product.files.length})
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-500">Provided by farmer</span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {product.files.map((file, idx) => {
+                  const isImage = file.type === 'image' || file.mimeType.startsWith('image/');
+                  return (
+                    <button
+                      key={file.id || idx}
+                      type="button"
+                      onClick={() => setActivePreviewFile(file)}
+                      className="group relative flex flex-col items-center justify-center p-2 rounded-xl bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-sm transition-all text-left overflow-hidden cursor-pointer"
+                    >
+                      {isImage && file.dataUrl ? (
+                        <div className="w-full h-16 rounded-lg overflow-hidden bg-slate-100 mb-1.5 flex items-center justify-center">
+                          <img
+                            src={file.dataUrl}
+                            alt={file.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-16 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-700 mb-1.5">
+                          <FileCheck className="w-8 h-8" />
+                        </div>
+                      )}
+                      <span className="text-xs font-medium text-slate-800 truncate w-full text-center">
+                        {file.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {(file.size / 1024).toFixed(0)} KB • Click to view
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Phone Number Display Box */}
           <div className="p-4 rounded-xl bg-slate-900 text-white flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-3">
@@ -189,6 +239,60 @@ export const ContactModal: React.FC<ContactModalProps> = ({ product, onClose }) 
           </div>
         </div>
       </div>
+
+      {/* File Lightbox / Viewer Modal */}
+      {activePreviewFile && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs"
+          onClick={() => setActivePreviewFile(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl p-4 text-slate-900 animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+              <div className="truncate pr-2">
+                <h4 className="font-bold text-sm truncate">{activePreviewFile.name}</h4>
+                <p className="text-[11px] text-slate-500">{(activePreviewFile.size / 1024).toFixed(1)} KB</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActivePreviewFile(null)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto flex items-center justify-center bg-slate-100 rounded-xl p-2">
+              {activePreviewFile.type === 'image' || activePreviewFile.mimeType.startsWith('image/') ? (
+                <img
+                  src={activePreviewFile.dataUrl}
+                  alt={activePreviewFile.name}
+                  className="max-h-[55vh] w-auto object-contain rounded-lg"
+                />
+              ) : (
+                <div className="py-12 text-center">
+                  <FileText className="w-16 h-16 text-emerald-600 mx-auto mb-2" />
+                  <p className="font-semibold text-slate-700">{activePreviewFile.name}</p>
+                  <p className="text-xs text-slate-500 mt-1">Verification Document / Certificate</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3 flex justify-end">
+              <a
+                href={activePreviewFile.dataUrl}
+                download={activePreviewFile.name}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open / Download Original</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

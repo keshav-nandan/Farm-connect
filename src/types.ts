@@ -1,9 +1,20 @@
+export interface ProductFile {
+  id: string;
+  name: string;
+  type: 'image' | 'pdf' | 'document' | 'other';
+  mimeType: string;
+  size: number;
+  dataUrl: string;
+  uploadedAt: string;
+}
+
 export interface Farmer {
   id: string;
   name: string;
   phone: string;
   location: string;
   details: string;
+  documents?: ProductFile[];
   createdAt: string;
 }
 
@@ -17,6 +28,7 @@ export interface Product {
   price: number;
   location: string;
   description: string;
+  files?: ProductFile[];
   createdAt: string;
 }
 

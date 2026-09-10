@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { PlusCircle, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Sprout, Info } from 'lucide-react';
+import { PlusCircle, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Sprout, Info, FileText, Image as ImageIcon } from 'lucide-react';
 import { createProduct } from '../services/api';
-import { Product, PageView } from '../types';
+import { Product, PageView, ProductFile } from '../types';
+import { FileUpload } from './FileUpload';
 
 interface SellProduceFormProps {
   onProductAdded: (newProduct: Product) => void;
@@ -22,6 +23,7 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
   const [price, setPrice] = useState('');
   const [location, setLocation] = useState(initialFarmerData?.location || '');
   const [description, setDescription] = useState('');
+  const [files, setFiles] = useState<ProductFile[]>([]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,6 +95,7 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
         price: parseFloat(price),
         location: location.trim(),
         description: description.trim() || `Fresh ${productName.trim()} direct from farmer.`,
+        files: files.length > 0 ? files : undefined,
       });
 
       if (response.success && response.product) {
@@ -114,6 +117,7 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
     setQuantity('');
     setPrice('');
     setDescription('');
+    setFiles([]);
     setErrors({});
     setSubmitError(null);
     setSuccessProduct(null);
@@ -161,6 +165,15 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
                 <span className="text-slate-500">Location:</span>
                 <span className="font-semibold">{successProduct.location}</span>
               </div>
+              {successProduct.files && successProduct.files.length > 0 && (
+                <div className="flex justify-between items-center pt-1 border-t border-emerald-200/60">
+                  <span className="text-slate-500">Attached Files:</span>
+                  <span className="font-semibold text-emerald-800 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{successProduct.files.length} {successProduct.files.length === 1 ? 'file' : 'files'} saved</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -410,11 +423,22 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
                 />
               </div>
 
+              {/* Produce Photos & Documents Section (Multiple files + Add more files) */}
+              <div className="pt-2 pb-1 border-t border-slate-100">
+                <FileUpload
+                  files={files}
+                  onChange={setFiles}
+                  title="Produce Photos & Verification Documents (Optional)"
+                  description="Farmers can attach multiple files (crop harvest pictures, field photos, organic farming certificates, or lab test reports). You can always click '+ Add More Files' to upload more."
+                  idPrefix="sell-produce"
+                />
+              </div>
+
               {/* Notice */}
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2">
                 <Info className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <span>
-                  No login required. Your listing is saved directly to the shared database and will be immediately visible on all devices.
+                  No login required. Your listing and attached files are saved directly to the shared database and will be immediately visible on all devices.
                 </span>
               </div>
 
