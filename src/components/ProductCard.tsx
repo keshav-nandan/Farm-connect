@@ -1,10 +1,13 @@
 import React from 'react';
-import { MapPin, User, Package, PhoneCall, Tag, Paperclip, Image as ImageIcon } from 'lucide-react';
+import { MapPin, User, Package, PhoneCall, Tag, Paperclip, Image as ImageIcon, Calendar, Star, Flag } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductCardProps {
   product: Product;
   onContact: (product: Product) => void;
+  onReview?: (product: Product) => void;
+  onReport?: (product: Product) => void;
+  ratingSummary?: { average: number; count: number };
 }
 
 // Visual category helpers
@@ -49,7 +52,13 @@ const getProductIconEmoji = (name: string, category: string): string => {
   return '🌱';
 };
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onContact }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({
+  product,
+  onContact,
+  onReview,
+  onReport,
+  ratingSummary,
+}) => {
   const emoji = getProductIconEmoji(product.productName, product.category);
   const categoryClass = getCategoryColor(product.category);
 
@@ -85,14 +94,52 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onContact }) 
         </div>
 
         {/* Farmer Info */}
-        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-3 text-xs text-slate-700">
-          <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-            {product.farmerName.charAt(0).toUpperCase()}
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-3 text-xs text-slate-700">
+          <div className="flex items-center gap-2 truncate">
+            <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+              {product.farmerName.charAt(0).toUpperCase()}
+            </div>
+            <div className="truncate">
+              <span className="text-slate-500">Farmer: </span>
+              <span className="font-semibold text-slate-800">{product.farmerName}</span>
+            </div>
           </div>
-          <div className="truncate">
-            <span className="text-slate-500">Farmer: </span>
-            <span className="font-semibold text-slate-800">{product.farmerName}</span>
+
+          {onReview && (
+            <button
+              type="button"
+              id={`farmer-rating-btn-${product.id}`}
+              onClick={() => onReview(product)}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-200 transition-colors cursor-pointer shrink-0 shadow-2xs"
+              title="View farmer ratings and comments"
+            >
+              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              {ratingSummary && ratingSummary.count > 0 ? (
+                <span>
+                  {ratingSummary.average.toFixed(1)}{' '}
+                  <span className="text-amber-700 font-normal">({ratingSummary.count})</span>
+                </span>
+              ) : (
+                <span>Rate & Comment</span>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Mandatory Date of Harvesting */}
+        <div className="mb-3 flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-emerald-50/70 border border-emerald-100 text-xs text-emerald-900">
+          <div className="flex items-center gap-1.5 font-medium truncate">
+            <Calendar className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="truncate">
+              Harvested:{' '}
+              <strong className="font-bold text-emerald-950">
+                {product.harvestingDate || 'Recent'}
+              </strong>
+            </span>
           </div>
+          <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 bg-emerald-200/50 px-1.5 py-0.5 rounded shrink-0">
+            Fresh Crop
+          </span>
         </div>
 
         {/* Product Description */}
@@ -135,7 +182,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onContact }) 
       </div>
 
       {/* Card Action Footer */}
-      <div className="p-5 sm:p-6 pt-3 border-t border-slate-100 bg-slate-50/40">
+      <div className="p-5 sm:p-6 pt-3 border-t border-slate-100 bg-slate-50/40 space-y-2">
         <button
           id={`contact-farmer-btn-${product.id}`}
           onClick={() => onContact(product)}
@@ -144,7 +191,35 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onContact }) 
           <PhoneCall className="w-4 h-4" />
           <span>Contact Farmer</span>
         </button>
+
+        <div className="flex items-center justify-between text-xs text-slate-500 px-1 pt-1">
+          {onReview && (
+            <button
+              type="button"
+              id={`rate-comment-footer-btn-${product.id}`}
+              onClick={() => onReview(product)}
+              className="inline-flex items-center gap-1.5 text-amber-800 hover:text-amber-900 bg-amber-50/80 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200/80 transition-colors cursor-pointer font-semibold text-[11px]"
+              title="Rate farmer and write a comment"
+            >
+              <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              <span>Rate & Comment</span>
+            </button>
+          )}
+
+          {onReport && (
+            <button
+              type="button"
+              onClick={() => onReport(product)}
+              className="inline-flex items-center gap-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer font-medium text-[11px] ml-auto"
+              title="Report suspicious or inaccurate farmer listing"
+            >
+              <Flag className="w-3 h-3 text-rose-500" />
+              <span>Report</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 };
+

@@ -1,10 +1,22 @@
-import { Product, Farmer, MarketplaceStats, FilterState, ProductFile } from '../types';
+import { Product, Farmer, MarketplaceStats, FilterState, ProductFile, AdminAnalytics, LoginLog, RegularSeller, FarmerReview, FarmerReport } from '../types';
 import {
   getStoredProducts,
   saveStoredProducts,
   getStoredFarmers,
   saveStoredFarmers,
   calculateLocalStats,
+  recordLocalLogin,
+  calculateLocalAdminAnalytics,
+  updateLocalProduct,
+  deleteLocalProduct,
+  deleteLocalFarmer,
+  getStoredReviews,
+  addStoredReview,
+  deleteStoredReview,
+  getStoredReports,
+  addStoredReport,
+  updateStoredReportStatus,
+  deleteStoredReport,
 } from './fallbackData';
 
 export const API_BASE = '/api';
@@ -106,6 +118,7 @@ function createLocalProduct(data: {
   price: number;
   location: string;
   description: string;
+  harvestingDate: string;
   files?: ProductFile[];
 }): { success: boolean; product: Product; message: string } {
   const newProduct: Product = {
@@ -118,6 +131,7 @@ function createLocalProduct(data: {
     price: data.price,
     location: data.location.trim(),
     description: data.description.trim(),
+    harvestingDate: data.harvestingDate.trim() || new Date().toISOString().split('T')[0],
     files: data.files,
     createdAt: new Date().toISOString(),
   };
@@ -223,6 +237,7 @@ export async function createProduct(data: {
   price: number;
   location: string;
   description: string;
+  harvestingDate: string;
   files?: ProductFile[];
 }): Promise<{ success: boolean; product: Product; message: string }> {
   try {
@@ -379,5 +394,472 @@ export async function resetDemoData(): Promise<void> {
     } catch {
       // ignore
     }
+  }
+}
+
+// ==========================================
+// Admin Services (Username: admin / Password: admin)
+// ==========================================
+
+const ADMIN_STORAGE_TOKEN = 'farmconnect_admin_auth';
+
+export function isLocalAdminAuthenticated(): boolean {
+  try {
+    const auth = localStorage.getItem(ADMIN_STORAGE_TOKEN);
+    if (!auth) return false;
+    const parsed = JSON.parse(auth);
+    return Boolean(parsed?.authenticated && parsed?.username === 'admin');
+  } catch {
+    return false;
+  }
+}
+
+export function saveAdminSession(): void {
+  try {
+    localStorage.setItem(
+      ADMIN_STORAGE_TOKEN,
+      JSON.stringify({
+        authenticated: true,
+        username: 'admin',
+        loggedInAt: new Date().toISOString(),
+      })
+    );
+  } catch {
+    // ignore
+  }
+}
+
+export function clearAdminSession(): void {
+  try {
+    localStorage.removeItem(ADMIN_STORAGE_TOKEN);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Authenticates admin with username and password.
+ */
+export async function adminLogin(
+  username: string,
+  pass: string
+): Promise<{ success: boolean; message: string; token?: string }> {
+  const cleanUser = username.trim();
+  const cleanPass = pass.trim();
+
+  try {
+    const response = await fetch(`${API_BASE}/admin/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ username: cleanUser, password: cleanPass }),
+    });
+
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const resJson = isJson ? await response.json().catch(() => null) : null;
+
+    if (response.ok && resJson?.success) {
+      saveAdminSession();
+      return { success: true, message: 'Welcome back, Admin!', token: resJson.token };
+    }
+
+    // Static host fallback (e.g. Vercel static build where /api returns 404)
+    if (response.status === 404 || response.status === 502 || !isJson) {
+      if (cleanUser === 'admin' && cleanPass === 'admin') {
+        saveAdminSession();
+        recordLocalLogin('success', cleanUser);
+        return { success: true, message: 'Admin authentication successful (client mode)' };
+      } else {
+        recordLocalLogin('failed', cleanUser);
+        throw new Error('Invalid credentials. Required: Username="admin", Password="admin"');
+      }
+    }
+
+    const err = getSafeErrorMessage(resJson, 'Invalid username or password');
+    throw new Error(err);
+  } catch (err: unknown) {
+    if (err instanceof TypeError && (err.message.includes('fetch') || err.message.includes('network'))) {
+      if (cleanUser === 'admin' && cleanPass === 'admin') {
+        saveAdminSession();
+        recordLocalLogin('success', cleanUser);
+        return { success: true, message: 'Admin authentication successful (offline mode)' };
+      } else {
+        recordLocalLogin('failed', cleanUser);
+        throw new Error('Invalid credentials. Required: Username="admin", Password="admin"');
+      }
+    }
+    const safeMsg = getSafeErrorMessage(err, 'Authentication failed');
+    throw new Error(safeMsg);
+  }
+}
+
+/**
+ * Fetches analytics: how many logged in, login records, and regular sellers.
+ */
+export async function fetchAdminAnalytics(): Promise<AdminAnalytics> {
+  try {
+    const response = await fetch(`${API_BASE}/admin/analytics`, {
+      headers: { Accept: 'application/json' },
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const data = await response.json();
+      return data;
+    }
+
+    return calculateLocalAdminAnalytics();
+  } catch {
+    return calculateLocalAdminAnalytics();
+  }
+}
+
+/**
+ * Admin: Update produce details.
+ */
+export async function updateProductDetails(
+  id: string,
+  data: Partial<Product>
+): Promise<{ success: boolean; product: Product; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/products/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const resJson = isJson ? await response.json().catch(() => null) : null;
+
+    if (response.ok && resJson?.success && resJson?.product) {
+      // Sync local storage
+      const current = getStoredProducts();
+      const updatedList = current.map((p) => (p.id === id ? resJson.product : p));
+      saveStoredProducts(updatedList);
+      return resJson;
+    }
+
+    if (response.status === 404 || response.status === 502 || !isJson) {
+      const updated = updateLocalProduct(id, data);
+      return {
+        success: true,
+        product: updated,
+        message: 'Produce updated successfully!',
+      };
+    }
+
+    const err = getSafeErrorMessage(resJson, 'Failed to update produce details');
+    throw new Error(err);
+  } catch (err: unknown) {
+    if (err instanceof TypeError && (err.message.includes('fetch') || err.message.includes('network'))) {
+      const updated = updateLocalProduct(id, data);
+      return {
+        success: true,
+        product: updated,
+        message: 'Produce updated successfully in local storage!',
+      };
+    }
+    const safeMsg = getSafeErrorMessage(err, 'Failed to update produce');
+    throw new Error(safeMsg);
+  }
+}
+
+/**
+ * Admin: Delete a product listing.
+ */
+export async function deleteProductRecord(id: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/products/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+    });
+
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const resJson = isJson ? await response.json().catch(() => null) : null;
+
+    if (response.ok && resJson?.success) {
+      deleteLocalProduct(id);
+      return resJson;
+    }
+
+    if (response.status === 404 || response.status === 502 || !isJson) {
+      deleteLocalProduct(id);
+      return { success: true, message: 'Produce listing deleted successfully!' };
+    }
+
+    const err = getSafeErrorMessage(resJson, 'Failed to delete produce record');
+    throw new Error(err);
+  } catch (err: unknown) {
+    deleteLocalProduct(id);
+    return { success: true, message: 'Produce listing removed from storage!' };
+  }
+}
+
+/**
+ * Admin: Delete farmer details.
+ */
+export async function deleteFarmerRecord(
+  id: string,
+  deleteLinkedProducts = false
+): Promise<{ success: boolean; message: string; removedProductsCount?: number }> {
+  try {
+    const url = `${API_BASE}/farmers/${encodeURIComponent(id)}${
+      deleteLinkedProducts ? '?deleteProducts=true' : ''
+    }`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+    });
+
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const resJson = isJson ? await response.json().catch(() => null) : null;
+
+    if (response.ok && resJson?.success) {
+      deleteLocalFarmer(id, deleteLinkedProducts);
+      return resJson;
+    }
+
+    if (response.status === 404 || response.status === 502 || !isJson) {
+      const res = deleteLocalFarmer(id, deleteLinkedProducts);
+      return {
+        success: true,
+        message: 'Farmer details deleted successfully!',
+        removedProductsCount: res.removedCount,
+      };
+    }
+
+    const err = getSafeErrorMessage(resJson, 'Failed to delete farmer details');
+    throw new Error(err);
+  } catch (err: unknown) {
+    const res = deleteLocalFarmer(id, deleteLinkedProducts);
+    return {
+      success: true,
+      message: 'Farmer details deleted successfully from local storage!',
+      removedProductsCount: res.removedCount,
+    };
+  }
+}
+
+/**
+ * Fetch reviews for farmers. If farmerPhone is provided, filters to that farmer.
+ */
+export async function fetchReviews(farmerPhone?: string): Promise<FarmerReview[]> {
+  try {
+    const url = farmerPhone
+      ? `${API_BASE}/reviews?farmerPhone=${encodeURIComponent(farmerPhone)}`
+      : `${API_BASE}/reviews`;
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json' },
+    });
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const data = await response.json();
+      if (Array.isArray(data)) return data;
+    }
+  } catch (err) {
+    console.warn('Could not fetch reviews from server, falling back to local storage:', err);
+  }
+  const all = getStoredReviews();
+  if (farmerPhone) {
+    const clean = farmerPhone.replace(/\D/g, '');
+    return all.filter((r) => r.farmerPhone.replace(/\D/g, '') === clean);
+  }
+  return all;
+}
+
+/**
+ * Submit a rating and review for a farmer.
+ */
+export async function submitReview(data: {
+  farmerPhone: string;
+  farmerName: string;
+  rating: number;
+  reviewerName: string;
+  comment: string;
+}): Promise<{ success: boolean; review: FarmerReview; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/reviews`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const resJson = isJson ? await response.json().catch(() => null) : null;
+
+    if (response.ok && resJson?.success && resJson?.review) {
+      addStoredReview(resJson.review);
+      return resJson;
+    }
+
+    if (response.status === 404 || response.status === 502 || !isJson) {
+      const created = addStoredReview(data);
+      return {
+        success: true,
+        review: created,
+        message: 'Review and rating submitted successfully!',
+      };
+    }
+
+    const err = getSafeErrorMessage(resJson, 'Failed to submit review');
+    throw new Error(err);
+  } catch (err: unknown) {
+    if (err instanceof TypeError && (err.message.includes('fetch') || err.message.includes('network'))) {
+      const created = addStoredReview(data);
+      return {
+        success: true,
+        review: created,
+        message: 'Review and rating saved locally!',
+      };
+    }
+    const safeMsg = getSafeErrorMessage(err, 'Failed to submit review');
+    throw new Error(safeMsg);
+  }
+}
+
+/**
+ * Delete a farmer review (Admin moderation).
+ */
+export async function deleteReview(id: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/reviews/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+    });
+    deleteStoredReview(id);
+    return { success: true, message: 'Review deleted successfully' };
+  } catch {
+    deleteStoredReview(id);
+    return { success: true, message: 'Review deleted from local storage' };
+  }
+}
+
+/**
+ * Fetch farmer reports (Admin).
+ */
+export async function fetchReports(): Promise<FarmerReport[]> {
+  try {
+    const response = await fetch(`${API_BASE}/reports`, {
+      headers: { Accept: 'application/json' },
+    });
+    const contentType = response.headers.get('content-type') || '';
+    if (response.ok && contentType.includes('application/json')) {
+      const data = await response.json();
+      if (Array.isArray(data)) return data;
+    }
+  } catch (err) {
+    console.warn('Could not fetch reports from server, falling back to local storage:', err);
+  }
+  return getStoredReports();
+}
+
+/**
+ * Submit a report against a farmer.
+ */
+export async function submitReport(data: {
+  farmerPhone: string;
+  farmerName: string;
+  reportedBy: string;
+  reporterPhone?: string;
+  reason: string;
+  details: string;
+}): Promise<{ success: boolean; report: FarmerReport; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/reports`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const resJson = isJson ? await response.json().catch(() => null) : null;
+
+    if (response.ok && resJson?.success && resJson?.report) {
+      addStoredReport(resJson.report);
+      return resJson;
+    }
+
+    if (response.status === 404 || response.status === 502 || !isJson) {
+      const created = addStoredReport(data);
+      return {
+        success: true,
+        report: created,
+        message: 'Report submitted successfully to the administrator!',
+      };
+    }
+
+    const err = getSafeErrorMessage(resJson, 'Failed to submit report');
+    throw new Error(err);
+  } catch (err: unknown) {
+    if (err instanceof TypeError && (err.message.includes('fetch') || err.message.includes('network'))) {
+      const created = addStoredReport(data);
+      return {
+        success: true,
+        report: created,
+        message: 'Report submitted and saved locally!',
+      };
+    }
+    const safeMsg = getSafeErrorMessage(err, 'Failed to submit report');
+    throw new Error(safeMsg);
+  }
+}
+
+/**
+ * Update report status (e.g. mark resolved or dismissed).
+ */
+export async function updateReportStatus(
+  id: string,
+  status: 'pending' | 'resolved' | 'dismissed'
+): Promise<{ success: boolean; report?: FarmerReport }> {
+  try {
+    const response = await fetch(`${API_BASE}/reports/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    const isJson = (response.headers.get('content-type') || '').includes('application/json');
+    const resJson = isJson ? await response.json().catch(() => null) : null;
+
+    if (response.ok && resJson?.success) {
+      updateStoredReportStatus(id, status);
+      return resJson;
+    }
+    updateStoredReportStatus(id, status);
+    return { success: true };
+  } catch {
+    updateStoredReportStatus(id, status);
+    return { success: true };
+  }
+}
+
+/**
+ * Delete / dismiss report permanently.
+ */
+export async function deleteReport(id: string): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE}/reports/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+    });
+    deleteStoredReport(id);
+    return { success: true, message: 'Report dismissed' };
+  } catch {
+    deleteStoredReport(id);
+    return { success: true, message: 'Report dismissed locally' };
   }
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Sprout, Info, FileText, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Sprout, Info, Calendar } from 'lucide-react';
 import { createProduct, getSafeErrorMessage } from '../services/api';
 import { Product, PageView, ProductFile } from '../types';
 import { FileUpload } from './FileUpload';
@@ -22,6 +22,7 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
   const [location, setLocation] = useState(initialFarmerData?.location || '');
+  const [harvestingDate, setHarvestingDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<ProductFile[]>([]);
 
@@ -71,6 +72,10 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
       errs.location = 'Location (City/District) is required';
     }
 
+    if (!harvestingDate.trim()) {
+      errs.harvestingDate = 'Date of harvesting is required (mandatory)';
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -94,6 +99,7 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
         quantity: parseFloat(quantity),
         price: parseFloat(price),
         location: location.trim(),
+        harvestingDate: harvestingDate.trim(),
         description: description.trim() || `Fresh ${productName.trim()} direct from farmer.`,
         files: files.length > 0 ? files : undefined,
       });
@@ -117,6 +123,7 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
     setProductName('');
     setQuantity('');
     setPrice('');
+    setHarvestingDate(new Date().toISOString().split('T')[0]);
     setDescription('');
     setFiles([]);
     setErrors({});
@@ -165,6 +172,13 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
               <div className="flex justify-between">
                 <span className="text-slate-500">Location:</span>
                 <span className="font-semibold">{successProduct.location}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Date of Harvesting:</span>
+                <span className="font-semibold text-emerald-800 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{successProduct.harvestingDate}</span>
+                </span>
               </div>
               {successProduct.files && successProduct.files.length > 0 && (
                 <div className="flex justify-between items-center pt-1 border-t border-emerald-200/60">
@@ -218,6 +232,7 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
                   setQuantity('160');
                   setPrice('40');
                   setLocation('Ranchi');
+                  setHarvestingDate(new Date().toISOString().split('T')[0]);
                   setDescription('Crisp, tender sweet green peas freshly harvested from winter organic plots.');
                   setErrors({});
                 }}
@@ -407,6 +422,35 @@ export const SellProduceForm: React.FC<SellProduceFormProps> = ({
                     <p className="text-xs text-rose-600 mt-1 font-medium">{errors.location}</p>
                   )}
                 </div>
+              </div>
+
+              {/* Date of Harvesting - Mandatory */}
+              <div className="p-4 rounded-xl bg-emerald-50/40 border border-emerald-200/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2">
+                  <label htmlFor="harvestingDate" className="block text-xs font-bold uppercase tracking-wider text-slate-800">
+                    Date of Harvesting <span className="text-rose-500 font-extrabold">* (Mandatory)</span>
+                  </label>
+                  <span className="text-[11px] text-emerald-800 font-medium flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                    Indicates when this crop was harvested from the field
+                  </span>
+                </div>
+                <input
+                  id="harvestingDate"
+                  type="date"
+                  required
+                  value={harvestingDate}
+                  onChange={(e) => {
+                    setHarvestingDate(e.target.value);
+                    if (errors.harvestingDate) setErrors({ ...errors, harvestingDate: '' });
+                  }}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border ${
+                    errors.harvestingDate ? 'border-rose-500 bg-rose-50/20' : 'border-emerald-300 bg-white'
+                  } focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium text-slate-900 shadow-xs`}
+                />
+                {errors.harvestingDate && (
+                  <p className="text-xs text-rose-600 mt-1.5 font-medium">{errors.harvestingDate}</p>
+                )}
               </div>
 
               {/* Product Description */}

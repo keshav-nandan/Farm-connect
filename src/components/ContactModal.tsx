@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Phone, PhoneCall, MapPin, User, Package, Copy, Check, MessageSquare, AlertCircle, Paperclip, FileText, Eye, FileCheck, ExternalLink } from 'lucide-react';
+import { X, Phone, PhoneCall, MapPin, User, Package, Copy, Check, MessageSquare, AlertCircle, Paperclip, FileText, Eye, FileCheck, ExternalLink, Calendar, Star, Flag } from 'lucide-react';
 import { Product, ProductFile } from '../types';
 
 interface ContactModalProps {
   product: Product | null;
   onClose: () => void;
+  onOpenReview?: (product: Product) => void;
+  onOpenReport?: (product: Product) => void;
 }
 
-export const ContactModal: React.FC<ContactModalProps> = ({ product, onClose }) => {
+export const ContactModal: React.FC<ContactModalProps> = ({ product, onClose, onOpenReview, onOpenReport }) => {
   const [copied, setCopied] = useState(false);
   const [activePreviewFile, setActivePreviewFile] = useState<ProductFile | null>(null);
 
@@ -70,7 +72,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({ product, onClose }) 
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 max-h-[85vh] overflow-y-auto">
           {/* Farmer Profile Card */}
           <div className="flex items-center gap-4 p-4 rounded-xl bg-emerald-50/70 border border-emerald-100">
             <div className="w-14 h-14 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-bold shadow-xs">
@@ -89,6 +91,19 @@ export const ContactModal: React.FC<ContactModalProps> = ({ product, onClose }) 
                 <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                 <span>{product.location}</span>
               </div>
+              {onOpenReview && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenReview(product);
+                  }}
+                  className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300/80 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                  <span>Rate Farmer & Add Comment</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -97,6 +112,13 @@ export const ContactModal: React.FC<ContactModalProps> = ({ product, onClose }) 
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
               <span className="text-slate-500 font-medium">Product Inquired:</span>
               <span className="font-bold text-slate-900">{product.productName} ({product.category})</span>
+            </div>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+              <span className="text-slate-500 font-medium">Date of Harvesting:</span>
+              <span className="font-bold text-emerald-800 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                <span>{product.harvestingDate || 'Recently Harvested'}</span>
+              </span>
             </div>
             <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
               <span className="text-slate-500 font-medium">Quantity Available:</span>
@@ -228,6 +250,38 @@ export const ContactModal: React.FC<ContactModalProps> = ({ product, onClose }) 
                 Close
               </button>
             </div>
+          </div>
+
+          {/* Farmer Reviews & Report Options */}
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs gap-2">
+            {onOpenReview && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenReview(product);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-semibold cursor-pointer transition-colors"
+              >
+                <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                <span>Farmer Reviews & Rating</span>
+              </button>
+            )}
+
+            {onOpenReport && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenReport(product);
+                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 transition-colors font-medium cursor-pointer ml-auto"
+                title="Report this farmer"
+              >
+                <Flag className="w-3.5 h-3.5 text-rose-500" />
+                <span>Report Farmer</span>
+              </button>
+            )}
           </div>
 
           {/* Safe trade notice */}

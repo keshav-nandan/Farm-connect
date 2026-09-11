@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
-import { Sprout, Menu, X, PlusCircle, UserCheck, ShoppingBag, Info, Home } from 'lucide-react';
+import { Sprout, Menu, X, PlusCircle, UserCheck, ShoppingBag, Info, Home, Shield } from 'lucide-react';
 import { PageView } from '../types';
 
 interface NavbarProps {
   currentPage: PageView;
   onNavigate: (page: PageView) => void;
   productsCount: number;
+  onOpenAdmin: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, productsCount }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  currentPage,
+  onNavigate,
+  productsCount,
+  onOpenAdmin,
+}) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleNav = (page: PageView) => {
@@ -87,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, product
           </nav>
 
           {/* Action CTA & Status Indicator */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2.5">
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/70 text-xs text-emerald-800">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-medium">No Login Needed</span>
@@ -101,10 +107,33 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, product
               <PlusCircle className="w-4 h-4" />
               <span>List Produce</span>
             </button>
+
+            {/* Admin option in corner */}
+            <button
+              id="header-admin-portal-btn"
+              onClick={onOpenAdmin}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                currentPage === 'admin'
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-900 hover:text-white text-slate-700 border-slate-200'
+              }`}
+              title="Admin Control Panel (username: admin / pass: admin)"
+            >
+              <Shield className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Admin</span>
+            </button>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 md:hidden">
+            <button
+              id="mobile-admin-btn-corner"
+              onClick={onOpenAdmin}
+              className="p-2 rounded-lg bg-slate-100 text-slate-800 border border-slate-200"
+              title="Admin Panel"
+            >
+              <Shield className="w-5 h-5 text-emerald-600" />
+            </button>
             <button
               id="mobile-sell-btn-icon"
               onClick={() => handleNav('sell')}
@@ -166,7 +195,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, product
               </button>
             );
           })}
-          <div className="pt-3">
+          <div className="pt-3 space-y-2">
             <button
               id="mobile-drawer-sell-cta"
               onClick={() => handleNav('sell')}
@@ -174,6 +203,17 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, product
             >
               <PlusCircle className="w-5 h-5" />
               <span>Sell Your Produce Now</span>
+            </button>
+            <button
+              id="mobile-drawer-admin-btn"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenAdmin();
+              }}
+              className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-lg text-sm font-semibold border border-slate-700"
+            >
+              <Shield className="w-4 h-4 text-emerald-400" />
+              <span>Admin Portal (admin / admin)</span>
             </button>
           </div>
         </div>

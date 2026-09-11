@@ -1,13 +1,14 @@
 import React from 'react';
-import { Sprout, Phone, Heart, RotateCcw } from 'lucide-react';
+import { Sprout, Phone, Heart, RotateCcw, Shield } from 'lucide-react';
 import { PageView } from '../types';
 
 interface FooterProps {
   onNavigate: (page: PageView) => void;
   onResetDemo: () => void;
+  onOpenAdmin?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onNavigate, onResetDemo }) => {
+export const Footer: React.FC<FooterProps> = ({ onNavigate, onResetDemo, onOpenAdmin }) => {
   return (
     <footer className="bg-slate-900 text-slate-300 pt-12 pb-8 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -100,7 +101,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onResetDemo }) => {
               </li>
             </ul>
 
-            <div className="pt-2">
+            <div className="pt-2 flex flex-wrap items-center gap-2">
               <button
                 id="footer-reset-demo-btn"
                 onClick={onResetDemo}
@@ -110,6 +111,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onResetDemo }) => {
                 <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Reset Demo Sample Products</span>
               </button>
+
+              {onOpenAdmin && (
+                <button
+                  id="footer-admin-btn"
+                  onClick={onOpenAdmin}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-300 text-xs font-medium border border-slate-700 transition-colors cursor-pointer"
+                  title="Admin Control (username: admin / password: admin)"
+                >
+                  <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Admin Access</span>
+                </button>
+              )}
             </div>
           </div>
 

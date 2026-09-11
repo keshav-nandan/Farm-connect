@@ -7,16 +7,21 @@ import { SellProduceForm } from './components/SellProduceForm';
 import { FarmerRegisterForm } from './components/FarmerRegisterForm';
 import { AboutView } from './components/AboutView';
 import { ContactModal } from './components/ContactModal';
+import { FarmerReviewModal } from './components/FarmerReviewModal';
+import { FarmerReportModal } from './components/FarmerReportModal';
 import { Footer } from './components/Footer';
 import { ProductCard } from './components/ProductCard';
-import { fetchProducts, fetchStats, resetDemoData } from './services/api';
-import { Product, Farmer, MarketplaceStats, PageView, FilterState } from './types';
+import { AdminDashboard } from './components/AdminDashboard';
+import { AdminLoginModal } from './components/AdminLoginModal';
+import { fetchProducts, fetchStats, fetchReviews, resetDemoData, isLocalAdminAuthenticated, clearAdminSession } from './services/api';
+import { Product, Farmer, MarketplaceStats, PageView, FilterState, FarmerReview } from './types';
 import { ArrowRight, PlusCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<PageView>('home');
   const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<MarketplaceStats | null>(null);
+  const [reviews, setReviews] = useState<FarmerReview[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +36,8 @@ export default function App() {
 
   // Modal state
   const [contactProduct, setContactProduct] = useState<Product | null>(null);
+  const [reviewFarmer, setReviewFarmer] = useState<{ farmerName: string; farmerPhone: string } | null>(null);
+  const [reportFarmer, setReportFarmer] = useState<{ farmerName: string; farmerPhone: string } | null>(null);
 
   // Pre-fill state when a farmer registers first
   const [prefilledFarmer, setPrefilledFarmer] = useState<{
@@ -42,6 +49,9 @@ export default function App() {
   // Notification toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Admin authentication modal state
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -49,17 +59,28 @@ export default function App() {
     }, 4000);
   };
 
-  // Load products & stats from shared online database
+  const handleOpenAdmin = () => {
+    if (isLocalAdminAuthenticated()) {
+      setCurrentPage('admin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setIsAdminModalOpen(true);
+    }
+  };
+
+  // Load products, stats & reviews from shared online database
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
     setError(null);
     try {
-      const [fetchedProducts, fetchedStats] = await Promise.all([
+      const [fetchedProducts, fetchedStats, fetchedReviews] = await Promise.all([
         fetchProducts(),
         fetchStats(),
+        fetchReviews(),
       ]);
       setProducts(fetchedProducts);
       setStats(fetchedStats);
+      if (Array.isArray(fetchedReviews)) setReviews(fetchedReviews);
     } catch (err: unknown) {
       console.error('Data loading error:', err);
       setError(err instanceof Error ? err.message : 'Could not connect to shared database');
@@ -67,6 +88,19 @@ export default function App() {
       if (!silent) setIsLoading(false);
     }
   }, []);
+
+  // Compute live star ratings & comments count for any farmer by phone number
+  const getFarmerRatingSummary = useCallback((phone: string) => {
+    if (!phone) return undefined;
+    const clean = phone.replace(/\D/g, '');
+    const farmerReviews = reviews.filter((r) => r.farmerPhone.replace(/\D/g, '') === clean);
+    if (farmerReviews.length === 0) return undefined;
+    const avg = farmerReviews.reduce((sum, r) => sum + r.rating, 0) / farmerReviews.length;
+    return {
+      average: Math.round(avg * 10) / 10,
+      count: farmerReviews.length,
+    };
+  }, [reviews]);
 
   // Initial load
   useEffect(() => {
@@ -136,6 +170,7 @@ export default function App() {
         currentPage={currentPage}
         onNavigate={handleNavigate}
         productsCount={products.length}
+        onOpenAdmin={handleOpenAdmin}
       />
 
       {/* Main Page Router */}
@@ -183,6 +218,9 @@ export default function App() {
                         key={p.id}
                         product={p}
                         onContact={(prod) => setContactProduct(prod)}
+                        onReview={(prod) => setReviewFarmer({ farmerName: prod.farmerName, farmerPhone: prod.phone })}
+                        onReport={(prod) => setReportFarmer({ farmerName: prod.farmerName, farmerPhone: prod.phone })}
+                        ratingSummary={getFarmerRatingSummary(p.phone)}
                       />
                     ))}
                   </div>
@@ -224,6 +262,9 @@ export default function App() {
             onFilterChange={setFilters}
             onRefresh={() => loadData(false)}
             onContact={(prod) => setContactProduct(prod)}
+            onReview={(prod) => setReviewFarmer({ farmerName: prod.farmerName, farmerPhone: prod.phone })}
+            onReport={(prod) => setReportFarmer({ farmerName: prod.farmerName, farmerPhone: prod.phone })}
+            getFarmerRatingSummary={getFarmerRatingSummary}
             onNavigate={handleNavigate}
           />
         )}
@@ -246,18 +287,72 @@ export default function App() {
         {currentPage === 'about' && (
           <AboutView onNavigate={handleNavigate} />
         )}
+
+        {currentPage === 'admin' && (
+          <AdminDashboard
+            onNavigate={handleNavigate}
+            onLogout={() => {
+              clearAdminSession();
+              setCurrentPage('home');
+              showToast('Signed out of admin portal.');
+            }}
+          />
+        )}
       </main>
 
       {/* Global Contact Farmer Modal */}
       <ContactModal
         product={contactProduct}
         onClose={() => setContactProduct(null)}
+        onOpenReview={(prod) => setReviewFarmer({ farmerName: prod.farmerName, farmerPhone: prod.phone })}
+        onOpenReport={(prod) => setReportFarmer({ farmerName: prod.farmerName, farmerPhone: prod.phone })}
+      />
+
+      {/* Farmer Reviews & Comments Modal */}
+      {reviewFarmer && (
+        <FarmerReviewModal
+          isOpen={true}
+          farmerName={reviewFarmer.farmerName}
+          farmerPhone={reviewFarmer.farmerPhone}
+          onClose={() => setReviewFarmer(null)}
+          onReviewSubmitted={(newReview) => {
+            setReviews((prev) => [newReview, ...prev.filter((r) => r.id !== newReview.id)]);
+            showToast(`Rating and comment posted for ${newReview.farmerName}!`);
+            loadData(true);
+          }}
+        />
+      )}
+
+      {/* Farmer Listing Report Modal */}
+      {reportFarmer && (
+        <FarmerReportModal
+          isOpen={true}
+          farmerName={reportFarmer.farmerName}
+          farmerPhone={reportFarmer.farmerPhone}
+          onClose={() => setReportFarmer(null)}
+          onReportSubmitted={() => {
+            showToast('Report submitted for admin review.');
+          }}
+        />
+      )}
+
+      {/* Admin Authentication Modal */}
+      <AdminLoginModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        onSuccess={() => {
+          setIsAdminModalOpen(false);
+          setCurrentPage('admin');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          showToast('Admin access unlocked!');
+        }}
       />
 
       {/* Modern Agricultural Footer */}
       <Footer
         onNavigate={handleNavigate}
         onResetDemo={handleResetDemo}
+        onOpenAdmin={handleOpenAdmin}
       />
     </div>
   );

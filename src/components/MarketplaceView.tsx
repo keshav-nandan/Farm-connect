@@ -12,7 +12,10 @@ interface MarketplaceViewProps {
   onFilterChange: (filters: FilterState) => void;
   onRefresh: () => void;
   onContact: (product: Product) => void;
+  onReview?: (product: Product) => void;
+  onReport?: (product: Product) => void;
   onNavigate: (page: PageView) => void;
+  getFarmerRatingSummary?: (phone: string) => { average: number; count: number } | undefined;
 }
 
 export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
@@ -23,7 +26,10 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
   onFilterChange,
   onRefresh,
   onContact,
+  onReview,
+  onReport,
   onNavigate,
+  getFarmerRatingSummary,
 }) => {
   // Extract unique locations from all products for the filter dropdown
   const availableLocations = Array.from(
@@ -215,6 +221,9 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({
                   key={product.id}
                   product={product}
                   onContact={onContact}
+                  onReview={onReview}
+                  onReport={onReport}
+                  ratingSummary={getFarmerRatingSummary ? getFarmerRatingSummary(product.phone) : undefined}
                 />
               ))}
             </div>

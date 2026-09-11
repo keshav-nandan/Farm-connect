@@ -70,7 +70,7 @@
       "category": "Vegetables",
       "quantity": 200,
       "price": 25,
-      "location": "Dhanbad",
+      "location": "Amarpur(Banka)",
       "description": "Freshly dug medium-large Jyoti potatoes. Clean skin, excellent shelf life, perfect for wholesale or retail.",
       "createdAt": "2026-09-07T16:14:45.462Z"
     },
@@ -94,7 +94,7 @@
       "category": "Grains & Cereals",
       "quantity": 300,
       "price": 32,
-      "location": "Gaya",
+      "location": "Lakrikola",
       "description": "Sharbati golden grain wheat. Sun-dried, machine-cleaned, high protein content for soft chapatis.",
       "createdAt": "2026-09-08T02:14:45.462Z"
     },
@@ -130,7 +130,7 @@
       "category": "Vegetables",
       "quantity": 120,
       "price": 35,
-      "location": "Hazaribagh",
+      "location": "Katoria",
       "description": "Sweet, tender red desi carrots washed in clean tubewell water. Crunchy and rich in nutrients.",
       "createdAt": "2026-09-08T16:14:45.462Z"
     },
@@ -170,5 +170,16 @@
       "description": "Glossy dark purple oval brinjals (eggplant). Seedless, tender flesh, freshly picked today.",
       "createdAt": "2026-09-09T04:14:45.462Z"
     }
-  ]
+  ],
+  "logins": [
+    {
+      "id": "log-1789133420219",
+      "username": "admin",
+      "timestamp": "2026-09-11T13:30:20.219Z",
+      "ip": "127.0.0.1",
+      "userAgent": "curl/7.88.1",
+      "status": "success"
+    }
+  ],
+  "visitorCount": 143
 }
